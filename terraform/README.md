@@ -2,6 +2,7 @@
 
 ## 개요
 AWS에서 EC2를 Terraform을 통해 생성하고 kubespray를 이용하여 쿠버네티스를 구축합니다
+최신일 기준: 2025년 7월 7일
 
 ## 요구 사항
 - 미리 만들어진 ec2 keypair
@@ -11,15 +12,12 @@ AWS에서 EC2를 Terraform을 통해 생성하고 kubespray를 이용하여 쿠�
 
 | 제공자 | 소스 | 버전 |
 |--------|------|------|
-| aws | hashicorp/aws | 5.91.0 |
-| kubernetes | hashicorp/kubernetes | 2.36.0 |
-| helm | hashicorp/helm | 3.0.0-pre2 |
-| kubectl | alekc/kubectl | 2.1.3 |
+| aws | hashicorp/aws | 6.2.0 |
 
 ## 사용된 Terraform 모듈
 | 모듈 | 버전 |
 |--------|------|
-| terraform-aws-modules/vpc/aws | 5.19.0 |
+| terraform-aws-modules/vpc/aws | 6.0.1 |
 
 ## 적용 방법
 아래 명령어를 실행합니다

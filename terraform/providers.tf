@@ -3,20 +3,20 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.91.0"
+      version = ">= 6.0"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.36.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "3.0.0-pre2"
-    }
-    kubectl = {
-      source  = "alekc/kubectl"
-      version = "2.1.3"
-    }
+    # kubernetes = {
+    #   source  = "hashicorp/kubernetes"
+    #   version = ">= 2.37.1"
+    # }
+    # helm = {
+    #   source  = "hashicorp/helm"
+    #   version = "3.0.0-pre2"
+    # }
+    # kubectl = {
+    #   source  = "alekc/kubectl"
+    #   version = "2.1.3"
+    # }
   }
 }
 
@@ -43,26 +43,26 @@ provider "aws" {
 }
 
 # Kubernetes 제공자 설정
-provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  token                  = data.aws_eks_cluster_auth.this.token
-}
+# provider "kubernetes" {
+#   host                   = module.eks.cluster_endpoint
+#   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+#   token                  = data.aws_eks_cluster_auth.this.token
+# }
 
 # Helm 제공자 설정
-provider "helm" {
-  kubernetes = {
-    host                   = module.eks.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-    token                  = data.aws_eks_cluster_auth.this.token
-  }
-  debug = true
-}
+# provider "helm" {
+#   kubernetes = {
+#     host                   = module.eks.cluster_endpoint
+#     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+#     token                  = data.aws_eks_cluster_auth.this.token
+#   }
+#   debug = true
+# }
 
-# Kubectl 제공자 설정
-provider "kubectl" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  token                  = data.aws_eks_cluster_auth.this.token
-  load_config_file       = false
-}
+# # Kubectl 제공자 설정
+# provider "kubectl" {
+#   host                   = module.eks.cluster_endpoint
+#   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+#   token                  = data.aws_eks_cluster_auth.this.token
+#   load_config_file       = false
+# }
