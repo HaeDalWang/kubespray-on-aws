@@ -8,6 +8,7 @@
 - **Worker 노드**: 2대
 - **Ingress 노드**: 2대 (Public Subnet)
 - **Kubespray 관리 노드**: 1대 (Public Subnet)
+scp -i ~/.ssh/seungdobae.pem ~/.ssh/seungdobae.pem ubuntu@43.203.240.159:~/.ssh/ 
 
 ## 📁 파일 구조
 
