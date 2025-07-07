@@ -51,7 +51,7 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 # kubespray 이미지 다운로드
 echo "🐳 kubespray Docker 이미지 다운로드 중..."
-docker pull kubespray/kubespray:v2.28.0
+docker pull quay.io/kubespray/kubespray:v2.28.0
 
 echo "✅ kubespray 환경 구성이 완료되었습니다!"
 echo ""
