@@ -1,0 +1,18 @@
+# cluster-admin 권한이 명시된 kubeconfig파일을 아래의 경로로 admin.conf라는 이름으로 생성 
+kubeconfig_localhost: true
+artifacts_dir: /kubespray/artifacts
+unsafe_show_logs: true
+
+# 솔루션 버전
+kube_version: v1.33.2
+
+# 서비스 및 포드 서브넷
+kube_network_plugin: cilium
+kube_proxy_mode: nftables
+kube_service_addresses: "10.233.0.0/18"
+kube_pods_subnet: "10.233.64.0/18"
+kube_network_node_prefix: 24
+
+# Cilium 설정
+cilium_tunnel_mode: vxlan
+cilium_loadbalancer_mode: snat

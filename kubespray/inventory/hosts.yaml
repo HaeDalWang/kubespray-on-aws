@@ -1,0 +1,60 @@
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_become: yes
+    ansible_hostname: "{{ inventory_hostname }}"   
+  hosts:
+    master-1:
+      ansible_host: 10.0.10.10
+    master-2:
+      ansible_host: 10.0.11.10       
+    master-3:
+      ansible_host: 10.0.12.10      
+    worker-1:
+      ansible_host: 10.0.10.20
+    worker-2:
+      ansible_host: 10.0.11.20
+    ingress-1:
+      ansible_host: 10.0.0.10 
+    ingress-2:
+      ansible_host: 10.0.1.10 
+
+  children:
+    # Kubernetes 컨트롤 플레인 노드 (마스터 노드)
+    kube_control_plane:
+      hosts:
+        master-1:
+        master-2:
+        master-3:
+    # Kubernetes 워커 노드
+    kube_worker:
+      hosts:
+        worker-1:
+        worker-2:
+      vars:
+        node_labels:
+          role: worker
+          node-role.kubernetes.io/worker: ""
+    # 인그레스 노드
+    kube_router:
+      hosts:
+        ingress-1:
+        ingress-2:
+      vars:
+        node_labels:
+          role: ingress
+          node-role.kubernetes.io/ingress: ""
+    # etcd 클러스터 (마스터 노드와 동일)
+    etcd:
+      children:
+        kube_control_plane:
+    # 모든 Kubernetes 노드 (워커 + 인그레스 노드)
+    kube_node:
+      children:
+        kube_worker:
+        kube_router:
+    # 모든 Kubernetes 노드
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
