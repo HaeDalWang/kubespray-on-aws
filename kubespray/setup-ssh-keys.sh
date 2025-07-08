@@ -137,7 +137,8 @@ main() {
     log_info "🔐 SSH Agent에 기존 키 추가 중..."
     eval "$(ssh-agent -s)" > /dev/null 2>&1
     ssh-add "$EXISTING_PRIVATE_KEY" > /dev/null 2>&1
-    
+    ssh-add "$KUBESPRAY_PRIVATE_KEY" > /dev/null 2>&1
+
     # 각 호스트에 키 복사
     success_count=0
     failed_hosts=()
