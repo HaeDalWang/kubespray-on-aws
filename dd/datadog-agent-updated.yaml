@@ -1,0 +1,175 @@
+kind: "DatadogAgent"
+apiVersion: "datadoghq.com/v2alpha1"
+metadata:
+  name: "datadog"
+  namespace: "datadog"
+spec:
+  global:
+    site: "ap1.datadoghq.com"
+    credentials:
+      apiSecret:
+        secretName: "datadog-secret"
+        keyName: "api-key"
+  features:
+    # 로그 수집 (OpenTelemetry와 함께)
+    logCollection:
+      enabled: true
+      containerCollectAll: false  # OpenTelemetry가 주로 처리
+      containerCollectUsingFiles: true
+    
+    # APM 트레이싱 (OpenTelemetry 통합)
+    apm:
+      enabled: true
+      hostPortEnabled: true
+      unixDomainSocketEnabled: true
+      # OpenTelemetry 트레이스 수신 설정
+      otlp:
+        receiver:
+          protocols:
+            grpc:
+              enabled: true
+              endpoint: "0.0.0.0:4317"
+            http:
+              enabled: true
+              endpoint: "0.0.0.0:4318"
+    
+    # 프로세스 모니터링
+    processMonitoring:
+      enabled: true
+      
+    # NPM (Network Performance Monitoring)
+    npm:
+      enabled: true
+      
+    # 오케스트레이터 익스플로러
+    orchestratorExplorer:
+      enabled: true
+      
+    # Live Container Monitoring
+    liveContainerCollection:
+      enabled: true
+      
+    # Live Process Collection
+    liveProcessCollection:
+      enabled: true
+      
+    # CSPM (Cloud Security Posture Management)
+    cspm:
+      enabled: true
+      
+    # CWS (Cloud Workload Security)
+    cws:
+      enabled: true
+      
+  override:
+    nodeAgent:
+      # 환경 변수 설정
+      env:
+        - name: DD_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+          value: "true"
+        - name: DD_APM_NON_LOCAL_TRAFFIC
+          value: "true"
+        - name: DD_APM_RECEIVER_SOCKET
+          value: "/var/run/datadog/apm.socket"
+        - name: DD_DOGSTATSD_SOCKET
+          value: "/var/run/datadog/dsd.socket"
+        # OpenTelemetry 통합 설정
+        - name: DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_GRPC_ENDPOINT
+          value: "0.0.0.0:4317"
+        - name: DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT
+          value: "0.0.0.0:4318"
+        - name: DD_OTLP_CONFIG_LOGS_ENABLED
+          value: "true"
+        - name: DD_OTLP_CONFIG_METRICS_ENABLED
+          value: "true"
+        - name: DD_OTLP_CONFIG_TRACES_ENABLED
+          value: "true"
+        # 프로메테우스 메트릭 자동 발견
+        - name: DD_PROMETHEUS_SOCK
+          value: "/var/run/datadog/prometheus.sock"
+        - name: DD_CHECKS_TAG_CARDINALITY
+          value: "orchestrator"
+        - name: DD_TAGS
+          value: "env:production cluster:k8s-cluster"
+      
+      # 리소스 설정
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      
+      # 볼륨 마운트 추가
+      volumes:
+        - name: tmpdir
+          emptyDir: {}
+        - name: datadog-sock
+          emptyDir: {}
+        - name: procdir
+          hostPath:
+            path: /proc
+        - name: cgroups
+          hostPath:
+            path: /sys/fs/cgroup
+      
+      volumeMounts:
+        - name: tmpdir
+          mountPath: /tmp
+        - name: datadog-sock
+          mountPath: /var/run/datadog
+        - name: procdir
+          mountPath: /host/proc
+          readOnly: true
+        - name: cgroups
+          mountPath: /host/sys/fs/cgroup
+          readOnly: true
+      
+      # 네트워크 설정
+      hostNetwork: false
+      hostPID: true
+      
+      # 보안 컨텍스트
+      securityContext:
+        runAsUser: 0
+        seLinuxOptions:
+          level: s0
+          role: system_r
+          type: spc_t
+          user: system_u
+        
+      # Tolerations
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      
+    clusterAgent:
+      # 클러스터 에이전트 설정
+      env:
+        - name: DD_CLUSTER_CHECKS_ENABLED
+          value: "true"
+        - name: DD_EXTRA_CONFIG_PROVIDERS
+          value: "kube_endpoints kube_services"
+        - name: DD_EXTRA_LISTENERS
+          value: "kube_endpoints kube_services"
+        - name: DD_ORCHESTRATOR_EXPLORER_ENABLED
+          value: "true"
+        - name: DD_CLUSTER_NAME
+          value: "k8s-cluster"
+        
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi 

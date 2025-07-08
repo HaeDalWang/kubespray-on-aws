@@ -1,0 +1,232 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-demo-app
+  namespace: datadog
+  labels:
+    app: otel-demo-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: otel-demo-app
+  template:
+    metadata:
+      labels:
+        app: otel-demo-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: demo-app
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 8080
+          name: metrics
+        env:
+        # OpenTelemetry 설정
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4318"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "http/protobuf"
+        - name: OTEL_SERVICE_NAME
+          value: "demo-app"
+        - name: OTEL_SERVICE_VERSION
+          value: "1.0.0"
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "service.name=demo-app,service.version=1.0.0,deployment.environment=production"
+        # Datadog 트레이싱 설정
+        - name: DD_AGENT_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: DD_TRACE_AGENT_PORT
+          value: "8126"
+        - name: DD_SERVICE
+          value: "demo-app"
+        - name: DD_VERSION
+          value: "1.0.0"
+        - name: DD_ENV
+          value: "production"
+        volumeMounts:
+        - name: app-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: app-logs
+          mountPath: /var/log/nginx
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+      volumes:
+      - name: app-config
+        configMap:
+          name: nginx-config
+      - name: app-logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: datadog
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+        
+        # 로그 포맷 (구조화된 로그)
+        log_format json_combined escape=json
+          '{'
+            '"time_local":"$time_local",'
+            '"remote_addr":"$remote_addr",'
+            '"remote_user":"$remote_user",'
+            '"request":"$request",'
+            '"status": "$status",'
+            '"body_bytes_sent":"$body_bytes_sent",'
+            '"request_time":"$request_time",'
+            '"http_referrer":"$http_referer",'
+            '"http_user_agent":"$http_user_agent",'
+            '"service":"demo-app",'
+            '"trace_id":"$http_x_trace_id",'
+            '"span_id":"$http_x_span_id"'
+          '}';
+        
+        access_log /var/log/nginx/access.log json_combined;
+        error_log /var/log/nginx/error.log;
+        
+        sendfile on;
+        keepalive_timeout 65;
+        
+        # 메트릭 엔드포인트
+        server {
+            listen 8080;
+            location /metrics {
+                stub_status on;
+                access_log off;
+                allow all;
+            }
+            
+            location /health {
+                access_log off;
+                return 200 "OK\n";
+                add_header Content-Type text/plain;
+            }
+        }
+        
+        # 메인 애플리케이션
+        server {
+            listen 80;
+            server_name localhost;
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html index.htm;
+                
+                # 트레이싱 헤더 추가
+                add_header X-Service "demo-app";
+                add_header X-Version "1.0.0";
+            }
+            
+            location /api/health {
+                access_log off;
+                return 200 '{"status":"healthy","service":"demo-app","timestamp":"$time_iso8601"}';
+                add_header Content-Type application/json;
+            }
+            
+            location /api/slow {
+                access_log on;
+                # 의도적인 지연 (트레이싱 테스트용)
+                echo_sleep 2;
+                return 200 '{"message":"slow response","delay":"2s"}';
+                add_header Content-Type application/json;
+            }
+            
+            location /api/error {
+                access_log on;
+                return 500 '{"error":"intentional error for testing"}';
+                add_header Content-Type application/json;
+            }
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-demo-app
+  namespace: datadog
+  labels:
+    app: otel-demo-app
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    app: otel-demo-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+# 로드 제너레이터 (테스트용)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  namespace: datadog
+  labels:
+    app: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+      - name: load-generator
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do
+            # 정상 요청
+            wget -O - http://otel-demo-app/
+            wget -O - http://otel-demo-app/api/health
+            
+            # 느린 요청
+            wget -O - http://otel-demo-app/api/slow
+            
+            # 에러 요청
+            wget -O - http://otel-demo-app/api/error || true
+            
+            sleep 10
+          done
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 32Mi 

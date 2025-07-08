@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector
+  namespace: datadog
+  labels:
+    app: otel-collector
+    component: agent
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector
+      component: agent
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+        component: agent
+    spec:
+      serviceAccount: otel-collector
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.111.0
+        command:
+        - "/otelcol-contrib"
+        - "--config=/etc/otel-collector/config.yaml"
+        env:
+        - name: DD_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: datadog-secret
+              key: api-key
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: K8S_NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: K8S_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: K8S_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: K8S_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 4317  # OTLP gRPC receiver
+          name: otlp-grpc
+          protocol: TCP
+        - containerPort: 4318  # OTLP HTTP receiver
+          name: otlp-http
+          protocol: TCP
+        - containerPort: 8888  # Prometheus metrics
+          name: metrics
+          protocol: TCP
+        - containerPort: 13133 # Health check
+          name: health
+          protocol: TCP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-collector
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: hostfs
+          mountPath: /hostfs
+          readOnly: true
+          mountPropagation: HostToContainer
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: health
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      hostNetwork: false
+      hostPID: false
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: hostfs
+        hostPath:
+          path: /
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: datadog
+  labels:
+    app: otel-collector
+spec:
+  selector:
+    app: otel-collector
+    component: agent
+  ports:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+    protocol: TCP
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
+    protocol: TCP
+  - name: metrics
+    port: 8888
+    targetPort: 8888
+    protocol: TCP
+  type: ClusterIP 
