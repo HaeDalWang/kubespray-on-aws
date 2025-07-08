@@ -12,6 +12,21 @@ locals {
     "ingress-1",
     "ingress-2"  
   ]
+  
+  # Private IP 매핑
+  private_ips = {
+    0 = "172.22.10.10"  # master-1
+    1 = "172.22.10.11"  # master-2
+    2 = "172.22.10.12"  # master-3
+    3 = "172.22.10.20"  # worker-1
+    4 = "172.22.10.21"  # worker-2
+  }
+  
+  public_ips = {
+    0 = "172.22.0.10"   # kubespray
+    1 = "172.22.0.11"   # ingress-1
+    2 = "172.22.0.12"   # ingress-2
+  }
 }
 
 # ubuntu 22.04 AMI를 지정
@@ -39,7 +54,8 @@ resource "aws_instance" "public_ec2_instances" {
   instance_type = each.key == "kubespray" ? "t3.small" : "t3.medium"
   key_name      = var.ec2_keypair_name
 
-  subnet_id     = module.vpc.public_subnets[each.key % 4]
+  subnet_id     = module.vpc.public_subnets[0]  # 첫 번째 public 서브넷 사용
+  private_ip    = local.public_ips[each.key]    # 고정 private IP 할당
   associate_public_ip_address = true
 
   # Public 인스턴스는 공통 보안 그룹 + Public 전용 보안 그룹 사용
@@ -61,7 +77,8 @@ resource "aws_instance" "private_ec2_instances" {
   instance_type = "t3.medium"
   key_name      = var.ec2_keypair_name
 
-  subnet_id     = module.vpc.private_subnets[each.key % 4]
+  subnet_id     = module.vpc.private_subnets[0]  # 첫 번째 private 서브넷 사용
+  private_ip    = local.private_ips[each.key]    # 고정 private IP 할당
 
   # Private 인스턴스는 공통 보안 그룹만 사용
   vpc_security_group_ids = [

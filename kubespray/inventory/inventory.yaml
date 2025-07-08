@@ -5,19 +5,19 @@ all:
     ansible_hostname: "{{ inventory_hostname }}"   
   hosts:
     master-1:
-      ansible_host: 172.22.10.29
+      ansible_host: 172.22.10.10
     master-2:
-      ansible_host: 172.22.11.128    
+      ansible_host: 172.22.10.11    
     master-3:
-      ansible_host: 172.22.12.95   
+      ansible_host: 172.22.10.12   
     worker-1:
-      ansible_host: 172.22.13.132
+      ansible_host: 172.22.10.20
     worker-2:
-      ansible_host: 172.22.10.214
+      ansible_host: 172.22.10.21
     ingress-1:
-      ansible_host: 172.22.1.28
+      ansible_host: 172.22.0.11
     ingress-2:
-      ansible_host: 172.22.2.100
+      ansible_host: 172.22.0.12
 
   children:
     # Kubernetes 컨트롤 플레인 노드 (마스터 노드)
