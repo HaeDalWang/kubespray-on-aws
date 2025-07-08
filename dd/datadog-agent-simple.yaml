@@ -1,0 +1,127 @@
+apiVersion: datadoghq.com/v2alpha1
+kind: DatadogAgent
+metadata:
+  name: datadog
+  namespace: datadog
+spec:
+  global:
+    site: "ap1.datadoghq.com"
+    credentials:
+      apiSecret:
+        secretName: "datadog-secret"
+        keyName: "api-key"
+    tags:
+      - "env:production"
+      - "cluster:k8s-cluster"
+  
+  features:
+    # APM 트레이싱 활성화
+    apm:
+      enabled: true
+    
+    # 로그 수집 활성화  
+    logCollection:
+      enabled: true
+      containerCollectAll: true
+    
+    # 라이브 프로세스 모니터링
+    liveProcessCollection:
+      enabled: true
+    
+    # 라이브 컨테이너 모니터링
+    liveContainerCollection:
+      enabled: true
+    
+    # 오케스트레이터 익스플로러
+    orchestratorExplorer:
+      enabled: true
+    
+    # 네트워크 성능 모니터링
+    npm:
+      enabled: true
+    
+    # 보안 모니터링
+    cspm:
+      enabled: true
+    
+    cws:
+      enabled: true
+
+  override:
+    nodeAgent:
+      env:
+        # 기본 설정
+        - name: DD_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        
+        # APM 설정
+        - name: DD_APM_ENABLED
+          value: "true"
+        - name: DD_APM_NON_LOCAL_TRAFFIC
+          value: "true"
+        - name: DD_APM_RECEIVER_PORT
+          value: "8126"
+        
+        # DogStatsD 설정
+        - name: DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+          value: "true"
+        - name: DD_DOGSTATSD_PORT
+          value: "8125"
+        
+        # 로그 설정
+        - name: DD_LOGS_ENABLED
+          value: "true"
+        - name: DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL
+          value: "true"
+        
+        # 프로세스 모니터링
+        - name: DD_PROCESS_AGENT_ENABLED
+          value: "true"
+        
+        # 추가 태그
+        - name: DD_TAGS
+          value: "env:production cluster:k8s-cluster"
+        
+        # Kubernetes 클러스터 이름
+        - name: DD_CLUSTER_NAME
+          value: "k8s-cluster"
+        
+        # 프로메테우스 메트릭 수집
+        - name: DD_PROMETHEUS_SOCK
+          value: "/var/run/datadog/prometheus.sock"
+        
+        # 체크 태그 카디널리티
+        - name: DD_CHECKS_TAG_CARDINALITY
+          value: "orchestrator"
+        
+        # 컨테이너 제외 설정
+        - name: DD_CONTAINER_EXCLUDE
+          value: "name:datadog-agent"
+        
+        # 로그 제외 설정  
+        - name: DD_CONTAINER_EXCLUDE_LOGS
+          value: "name:datadog-agent"
+
+    clusterAgent:
+      env:
+        # 클러스터 체크 활성화
+        - name: DD_CLUSTER_CHECKS_ENABLED
+          value: "true"
+        
+        # 오케스트레이터 익스플로러
+        - name: DD_ORCHESTRATOR_EXPLORER_ENABLED
+          value: "true"
+        
+        # 클러스터 이름
+        - name: DD_CLUSTER_NAME
+          value: "k8s-cluster"
+        
+        # 추가 설정 프로바이더
+        - name: DD_EXTRA_CONFIG_PROVIDERS
+          value: "kube_endpoints kube_services"
+        
+        # 추가 리스너
+        - name: DD_EXTRA_LISTENERS
+          value: "kube_endpoints kube_services" 
