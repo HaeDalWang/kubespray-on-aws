@@ -1,3 +1,3 @@
 #!/bin/bash
-
-ansible-playbook -i inventory.yaml ../cluster.yml --private-key /root/.ssh/kubespray --become --become-user=root -e @variables.yaml
+cd /kubespray
+ansible-playbook -i inventory/inventory.yaml cluster.yml --private-key ~/.ssh/kubespray --become --become-user=root -e @inventory/variables.yaml
